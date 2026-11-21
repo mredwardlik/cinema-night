@@ -16,8 +16,7 @@ return [
 //	************** USER ***************
 	'parts' => '/_views/parts',
 	'css' => '/template/style',
-	'js' => '/template/js',
-	'fontawesome' => '/template/style/lib/fontawesome'
+	'js' => '/template/js'
 //	***********************************
 
 ];

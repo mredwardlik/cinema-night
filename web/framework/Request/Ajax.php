@@ -1,23 +1,23 @@
 <?php
 /**
- * 
+ * Runs the callback only for AJAX (X-Requested-With: XMLHttpRequest) requests.
  */
 class Ajax
 {
-	public static function catch($UserFunction, $withoutError=True)
+	public static function is()
 	{
-		if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest')
+		return strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest';
+	}
+
+	public static function catch($UserFunction, $withoutError = true)
+	{
+		if (self::is())
 		{
 			$UserFunction();
 		}
-		else
+		elseif ($withoutError)
 		{
-			if ($withoutError)
-			{
-				header('HTTP/1.1 400 Bad Request');
-				header('Content-Type: application/json; charset=UTF-8');
-				die();
-			}
+			json_response(['error' => 'Bad Request'], 400);
 		}
 	}
 }

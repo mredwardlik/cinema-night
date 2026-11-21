@@ -1,24 +1,12 @@
 <?php
 /**
- * 
+ * Loads config/*.php files once and gives read access to them.
  */
 class Config
 {
-	private static $SysPathes = 
-	[
-		'dirs.php'     => '/config/dirs.php',
-		'global.php'   => '/config/global.php',
-		'routes.php'   => '/config/routes.php',
-		'database.php' => '/config/database.php',
-		'csrf.php'     => '/config/csrf.php'
-	];
+	private static $files = ['app', 'dirs', 'global', 'routes', 'database', 'csrf'];
 
-	private static $dirs     = [];
-	private static $global   = [];
-	private static $router   = [];
-	private static $routes   = [];
-	private static $database = [];
-	private static $csrf     = [];
+	private static $config = [];
 
 //	******************************************
 //	*******************SET********************
@@ -26,88 +14,34 @@ class Config
 
 	public static function init()
 	{
-		self::$dirs     = include_once ROOT . self::$SysPathes['dirs.php'];
-		self::$global   = include_once ROOT . self::$SysPathes['global.php'];
-		self::$routes   = include_once ROOT . self::$SysPathes['routes.php'];
-		self::$database = include_once ROOT . self::$SysPathes['database.php'];
-		self::$csrf     = include_once ROOT . self::$SysPathes['csrf.php'];
+		foreach (self::$files as $name)
+		{
+			self::$config[$name] = require ROOT . '/config/' . $name . '.php';
+		}
 	}
 
 //	******************************************
 //	*******************GET********************
 //	******************************************
 
-	public static function getdirs($key='')
+	public static function get($file, $key = '', $default = null)
 	{
+		$values = self::$config[$file] ?? [];
+
 		if ($key === '')
 		{
-			return self::$dirs;
+			return $values;
 		}
-		else
-		{
-			return self::$dirs[$key];
-		}
+
+		return array_key_exists($key, $values) ? $values[$key] : $default;
 	}
 
-	public static function getglobal($key='')
-	{
-		if ($key === '')
-		{
-			return self::$global;
-		}
-		else
-		{
-			return self::$global[$key];
-		}
-	}
-
-	public static function getroutes($key='')
-	{
-		if ($key === '')
-		{
-			return self::$routes;
-		}
-		else
-		{
-			return self::$routes[$key];
-		}
-	}
-
-	public static function getdatabase($key='')
-	{
-		if ($key === '')
-		{
-			return self::$database;
-		}
-		else
-		{
-			return self::$database[$key];
-		}
-	}
-
-	public static function getcsrf($key='')
-	{
-		if ($key === '')
-		{
-			return self::$csrf;
-		}
-		else
-		{
-			return self::$csrf[$key];
-		}
-	}
-
-	public static function getSysPathes($key='')
-	{
-		if ($key === '')
-		{
-			return self::$SysPathes;
-		}
-		else
-		{
-			return self::$SysPathes[$key];
-		}
-	}
+	public static function getapp($key = '')      { return self::get('app', $key); }
+	public static function getdirs($key = '')     { return self::get('dirs', $key); }
+	public static function getglobal($key = '')   { return self::get('global', $key); }
+	public static function getroutes($key = '')   { return self::get('routes', $key); }
+	public static function getdatabase($key = '') { return self::get('database', $key); }
+	public static function getcsrf($key = '')     { return self::get('csrf', $key); }
 }
 
 Config::init();

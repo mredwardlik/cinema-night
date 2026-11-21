@@ -1,36 +1,31 @@
 <?php
 /**
- * 
+ * String helpers.
  */
 class Str
 {
-	public static function random($STR_UP_LENGTH = 0, $STR_DOWN_LENGTH = 0, $STR_NUMBER_LENGTH = 0) 
+	/**
+	 * Random string: N uppercase letters + N lowercase letters + N digits,
+	 * e.g. Str::random(2, 2, 6) -> "KQxe274913"
+	 */
+	public static function random($STR_UP_LENGTH = 0, $STR_DOWN_LENGTH = 0, $STR_NUMBER_LENGTH = 0)
 	{
-		$stringUp = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-	    $stringDown = 'abcdefghijklmnopqrstuvwxyz';
-	    $stringNumbers = '1234567890';
+		$alphabets = [
+			[$STR_UP_LENGTH,     'ABCDEFGHIJKLMNOPQRSTUVWXYZ'],
+			[$STR_DOWN_LENGTH,   'abcdefghijklmnopqrstuvwxyz'],
+			[$STR_NUMBER_LENGTH, '1234567890']
+		];
 
-	    $stringUplength = strlen($stringUp);
-	    $stringDownlength = strlen($stringDown);
-	    $stringNumberslenght = strlen($stringNumbers);
+		$RandomString = '';
 
-	    $RandomString = '';
+		foreach ($alphabets as [$length, $chars])
+		{
+			for ($i = 0; $i < $length; $i++)
+			{
+				$RandomString .= $chars[random_int(0, strlen($chars) - 1)];
+			}
+		}
 
-		// strUp Generation
-	    for ($i = 0; $i < $STR_UP_LENGTH; $i++) {
-	        $RandomString .= $stringUp[rand(0, $stringUplength - 1)];
-	    }
-
-		// strDown Generation
-	 	for ($i = 0; $i < $STR_DOWN_LENGTH; $i++) {
-	        $RandomString .= $stringDown[rand(0, $stringDownlength - 1)];
-	    }
-
-		// numlenght Generation
-	     for ($i = 0; $i < $STR_NUMBER_LENGTH; $i++) {
-	        $RandomString .= $stringNumbers[rand(0, $stringNumberslenght - 1)];
-	    }
-
-	    return $RandomString; //AAaa1234(4569760000)
+		return $RandomString;
 	}
 }

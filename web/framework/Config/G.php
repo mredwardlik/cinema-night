@@ -34,7 +34,7 @@ class G
 		}
 		else
 		{
-			return self::$var[$key];
+			return self::$var[$key] ?? null;
 		}
 	}
 

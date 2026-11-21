@@ -3,18 +3,11 @@
 //							SETTING START INFO
 //*******************************************************************************
 
-return 
+return
 [
 	'title' => 'Киноночь Алматы',
 	'css' => [
 		'parts/default.css',
 		'parts/fonts.css'
-	],
-	'fontawesome' => [
-		'all.js',
-		'v4-shims.js'
-	],
-	'js' => [
-
 	]
 ];

@@ -623,7 +623,6 @@ function Cell($w, $h=0, $txt='', $border=0, $ln=0, $align='', $fill=false, $link
 	{
 		if(!isset($this->CurrentFont))
 			$this->Error('No font has been set');
-			$txt = iconv('utf-8', 'cp1251', $txt);
 		if($align=='R')
 			$dx = $w-$this->cMargin-$this->GetStringWidth($txt);
 		elseif($align=='C')
@@ -1041,7 +1040,7 @@ protected function _dochecks()
 	if(ini_get('mbstring.func_overload') & 2)
 		$this->Error('mbstring overloading must be disabled');
 	// Ensure runtime magic quotes are disabled
-	if(get_magic_quotes_runtime())
+	if(function_exists("get_magic_quotes_runtime") && @get_magic_quotes_runtime())
 		@set_magic_quotes_runtime(0);
 }
 

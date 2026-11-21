@@ -1,23 +1,25 @@
 <?php
 /**
- * 
+ * Runs the callback only for POST requests.
  */
 class Post
 {
-	public static function catch($UserFunction, $withoutError=True)
+	public static function catch($UserFunction, $withoutError = true)
 	{
-		if ($_SERVER['REQUEST_METHOD'] == 'POST')
+		if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST')
 		{
 			$UserFunction();
 		}
-		else
+		elseif ($withoutError)
 		{
-			if ($withoutError)
-			{
-				header('HTTP/1.1 400 Bad Request');
-				header('Content-Type: application/json; charset=UTF-8');
-				die();
-			}
+			json_response(['error' => 'Method Not Allowed'], 405);
 		}
+	}
+
+	/** Trimmed string from $_POST */
+	public static function str($key, $default = '')
+	{
+		$value = $_POST[$key] ?? $default;
+		return is_string($value) ? trim($value) : $default;
 	}
 }

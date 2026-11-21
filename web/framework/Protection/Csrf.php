@@ -1,70 +1,53 @@
 <?php
 /**
- * 
+ * CSRF protection.
+ *
+ * One random token per session. Every POST request must send it either in the
+ * form field (config/csrf.php -> key) or in the X-CSRF-Token header
+ * (jQuery sends the header automatically, see _views/parts/scripts.php).
  */
-
 class Csrf
 {
-	private static $key   = '';
-	private static $token = '';
-
 	private static function badresponce()
 	{
-		header('HTTP/1.1 400 Bad Request');
+		http_response_code(419);
 		header('Content-Type: application/json; charset=UTF-8');
-		die();
-	}
-
-	private static function generate()
-	{
-		self::$token = Crypt::bin2hexPHP();
-		Session::set(self::key(), self::token());
-	}
-
-	public static function token()
-	{
-		return self::$token;
+		echo json_encode(['error' => 'Сессия устарела. Обновите страницу.'], JSON_UNESCAPED_UNICODE);
+		exit;
 	}
 
 	public static function key()
 	{
-		return self::$key;
+		return Config::getcsrf('key');
+	}
+
+	public static function token()
+	{
+		if (!Session::is(self::key()))
+		{
+			Session::set(self::key(), Crypt::bin2hexPHP());
+		}
+
+		return Session::get(self::key());
 	}
 
 	public static function field()
 	{
-		self::generate();
-		echo '<input type="hidden" name="' . self::key() . '" value="' . self::token() . '">';
+		echo '<input type="hidden" name="' . e(self::key()) . '" value="' . e(self::token()) . '">';
 	}
 
 	public static function catch()
 	{
-		self::$key = Config::getcsrf('key');
-
-		//if Session::get()
-		
-
-		if ((isset($_POST[self::key()]) || !empty($_POST[self::key()])) && ($_SERVER['REQUEST_METHOD'] === 'POST'))
+		if (!Config::getcsrf('power') || $_SERVER['REQUEST_METHOD'] !== 'POST')
 		{
-			if (!(hash_equals(Session::get(self::key()), $_POST[self::key()])))
-			{
-				self::badresponce();
-			}
-			else
-			{
-				self::generate();
-			}
+			return;
 		}
-		else
+
+		$sent = $_POST[self::key()] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+
+		if (!is_string($sent) || !hash_equals(self::token(), $sent))
 		{
-			if ($_SERVER['REQUEST_METHOD'] === 'POST')
-			{
-				self::badresponce();
-			}
-			else
-			{
-				self::generate();
-			}
+			self::badresponce();
 		}
 	}
 }
