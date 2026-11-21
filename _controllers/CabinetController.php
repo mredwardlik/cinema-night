@@ -1,32 +1,73 @@
 <?php
 /**
- * 
+ * Personal cabinet: profile, seat booking, own tickets.
+ * For admins: booking requests and ticket management.
  */
-class CabinetController 
+class CabinetController
 {
 
-	
+
 //	**************************************************
 //	**************************************************
+
+	private function requireUser()
+	{
+		if (!session_is('user'))
+		{
+			if (Ajax::is())
+			{
+				json_response(['error' => 'Войдите в аккаунт'], 401);
+			}
+			redirect('/login');
+		}
+	}
+
+	private function requireAdmin()
+	{
+		$this->requireUser();
+
+		if (!is_admin())
+		{
+			json_response(['error' => 'Недостаточно прав'], 403);
+		}
+	}
+
+	private function profile()
+	{
+		return R::findOne('profile', 'login = ?', [auth_user('login')]);
+	}
+
+
+//	**************************************************
+//	**************************************************
+
 
 	public function actionIndex()
 	{
-		if (session_is("user"))
-		{
-			G::setvar(True, [
-				'menu__active' => 'cabinet',
-				'css' => [
-					'parts/wrapper.css',
-					'parts/nav.css',
-					'cabinet.css' ]
-				]);
+		$this->requireUser();
 
-			view("cabinet.php");
-		}
-		else
-		{
-			header("Location: /login");
-		}
+		$login = auth_user('login');
+
+		G::setvar(true, [
+			'menu__active' => 'cabinet',
+			'css' => [
+				'parts/wrapper.css',
+				'parts/nav.css',
+				'cabinet.css'
+			]
+		]);
+
+		G::addvar([
+			'profile'  => $this->profile(),
+			'films'    => R::find('films', 'status = 1 ORDER BY id LIMIT 3'),
+			'price'    => Booking::currentPrice(),
+			'bookings' => Booking::forUser($login),
+			'pending'  => is_admin() ? Booking::withStatus(Booking::PENDING) : [],
+			'tickets'  => is_admin() ? Booking::withStatus(Booking::CONFIRMED) : [],
+			'used'     => is_admin() ? Booking::withStatus(Booking::USED) : []
+		]);
+
+		view('cabinet.php');
 	}
 
 
@@ -36,34 +77,55 @@ class CabinetController
 
 	public function actionCh()
 	{
-		Post::catch(function()
+		Post::catch(function ()
 		{
-			Ajax::catch(function()
+			Ajax::catch(function ()
 			{
-				$data = $_POST;
+				$this->requireUser();
 
-				$login = Session::get("user", "login");
-				unset($_SESSION["user"]);
-				unset($user);
+				$email = Post::str('email');
+				$phone = Post::str('phone');
+				$errors = [];
 
-				$user = R::findOne("users", "login = ?", array($login));
-				$user->email = $data["email"];
-				unset($_SESSION["user"]);
-				$_SESSION["user"] = serialize($user);
+				if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+				{
+					$errors['email'] = 'Введите корректный Email';
+				}
+
+				if ($phone !== '' && !preg_match('/^\+?[0-9\s\-()]{10,20}$/', $phone))
+				{
+					$errors['phone'] = 'Введите номер телефона, например +7 701 123 45 67';
+				}
+
+				foreach (['name' => 'Имя', 'surname' => 'Фамилия', 'patronymic' => 'Отчество'] as $field => $label)
+				{
+					if (mb_strlen(Post::str($field)) > 50)
+					{
+						$errors[$field] = "$label: не больше 50 символов";
+					}
+				}
+
+				if ($errors)
+				{
+					json_response($errors);
+				}
+
+				$user = R::load('users', auth_user('id'));
+				$user->email = $email;
 				R::store($user);
+				login_user($user);
 
-				$profile = R::findOne("profile", "login = ?", array($login));
-				$profile->name       = $data["name"];
-				$profile->surname    = $data["surname"];
-				$profile->patronymic = $data["patronymic"];
-				$profile->phone      = $data["phone"];
-				unset($_SESSION["profile"]);
-				$_SESSION["profile"] = serialize($profile);
+				$profile = $this->profile() ?: R::dispense('profile');
+				$profile->login      = $user->login;
+				$profile->name       = Post::str('name');
+				$profile->surname    = Post::str('surname');
+				$profile->patronymic = Post::str('patronymic');
+				$profile->phone      = $phone;
 				R::store($profile);
 
-				echo json_encode(["success" => "Сохранено!"]);
+				json_response(['success' => 'Сохранено!']);
 			});
-		}, False);
+		});
 	}
 
 
@@ -73,19 +135,12 @@ class CabinetController
 
 	public function actionLogout()
 	{
-		unset($_SESSION["user"]);
-		unset($_SESSION["profile"]);
-
-		if (!($_GET["redirect"] === ""))
+		Post::catch(function ()
 		{
-			$redirect = $_GET["redirect"];
-		}
-		else
-		{
-			$redirect = "/login";
-		}
-
-		header("Location: " . $redirect);
+			Session::forget('user');
+			session_regenerate_id(true);
+			redirect(safe_path($_POST['redirect'] ?? '', '/login'));
+		});
 	}
 
 
@@ -95,39 +150,27 @@ class CabinetController
 
 	public function actionTaken()
 	{
-		Post::catch(function() {
-			Ajax::catch(function() {
+		Post::catch(function ()
+		{
+			Ajax::catch(function ()
+			{
+				$this->requireUser();
 
-				if (empty($_POST["data"]))
+				$profile = $this->profile();
+
+				if (!$profile || trim($profile->name) === '' || trim($profile->phone) === '')
 				{
-					echo json_encode(["error" => "Выберите место!"]);
-				}
-				else
-				{
-					date_default_timezone_set('Asia/Almaty');
-					$data = $_POST["data"];
-					$kof = 0;
-					foreach ($data as $key) {
-						$kof++;
-					}
-
-					$prices = R::findOne("prices", "status = 1");
-					$price = $prices->price;
-
-					$seat = R::dispense('seat');
-					$seat->login  = Session::get('user', 'login');
-					$seat->seat   = json_encode($data);
-					$seat->iden   = Str::random(0,0,9);
-					$seat->code   = Str::random(2,2,6);
-					$seat->date   = date("Y-m-d H:i:s");
-					$seat->cost   = $price;
-					$seat->kof    = $kof;
-					$seat->price  = $kof*$price;
-					$seat->status = 0;
-					R::store($seat);
-					echo json_encode(["success" => "Запрос отправлен. Ждите звонка!"]);
+					json_response(['error' => 'Заполните имя и номер телефона в профиле: по нему оператор подтвердит бронь.']);
 				}
 
+				[$ok, $result] = Booking::create(auth_user('login'), $_POST['data'] ?? []);
+
+				if (!$ok)
+				{
+					json_response(['error' => $result]);
+				}
+
+				json_response(['success' => 'Запрос отправлен. Ждите звонка!']);
 			});
 		});
 	}
@@ -139,12 +182,45 @@ class CabinetController
 
 	public function actionSeats()
 	{
-		Post::catch(function() {
-			Ajax::catch(function() {
+		Post::catch(function ()
+		{
+			Ajax::catch(function ()
+			{
+				$this->requireUser();
+				json_response(['occupied' => Hall::occupiedSeats()]);
+			});
+		});
+	}
 
-				$seat = R::find("seat", "status = 1");
-				echo(json_encode($seat));
 
+//	**************************************************
+//	**************************************************
+
+
+	public function actionApprove()
+	{
+		$this->changeStatus(Booking::CONFIRMED, 'Бронь подтверждена, билет выдан.');
+	}
+
+	public function actionReject()
+	{
+		$this->changeStatus(Booking::REJECTED, 'Бронь отклонена, места снова свободны.');
+	}
+
+	private function changeStatus($to, $message)
+	{
+		Post::catch(function () use ($to, $message)
+		{
+			Ajax::catch(function () use ($to, $message)
+			{
+				$this->requireAdmin();
+
+				if (!Booking::setStatus($_POST['id'] ?? 0, Booking::PENDING, $to))
+				{
+					json_response(['error' => 'Заявка не найдена или уже обработана.']);
+				}
+
+				json_response(['success' => $message]);
 			});
 		});
 	}

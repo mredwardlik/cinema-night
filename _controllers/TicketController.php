@@ -1,8 +1,9 @@
 <?php
 /**
- * 
+ * /ticket{iden} - PDF ticket with QR code (owner or admin)
+ * /wipe{iden}   - ticket check at the entrance (admin scans the QR code)
  */
-class TicketController 
+class TicketController
 {
 
 //	**************************************************
@@ -11,35 +12,32 @@ class TicketController
 
 	public function actionIndex($params)
 	{
-		if (session_is("user"))
+		if (!session_is('user'))
 		{
-			$bean = R::findOne("seat", "iden = ? AND status = 1", array($params[0]));
-
-			if ( ((!is_null($bean))&&(Session::get("user", "role") == "admin")) || ( (!is_null($bean)) && (Session::get("user", "login") == $bean->login) ) )
-			{
-				$IDEN  = $params[0];
-				$LOGIN = $bean->login;
-				$CODE = $bean->code;
-
-				G::setvar(False, [
-					'bean'  => $bean,
-					'iden'  => $IDEN,
-					'login' => $LOGIN
-				]);
-
-				view("ticketing.php");
-			}
-			else
-			{
-				header("Location: /login");
-			}
-
-		}
-		else
-		{
-			header("Location: /login");
+			redirect('/login');
 		}
 
+		$bean = Booking::findByIden($params[0] ?? '');
+
+		$allowed = $bean
+			&& in_array((int) $bean->status, [Booking::CONFIRMED, Booking::USED], true)
+			&& (is_admin() || auth_user('login') === $bean->login);
+
+		if (!$allowed)
+		{
+			http_response_code(404);
+			include ROOT . '/error.php';
+			return;
+		}
+
+		G::setvar(false, [
+			'bean'    => $bean,
+			'iden'    => $bean->iden,
+			'login'   => $bean->login,
+			'profile' => R::findOne('profile', 'login = ?', [$bean->login])
+		]);
+
+		view('ticketing.php');
 	}
 
 
@@ -49,27 +47,42 @@ class TicketController
 
 	public function actionWipe($params)
 	{
-		//$bean = R::findOne("seat", "login = ? AND iden = ? AND status = 1", array(Session::get("user", "login"), $params[0]));
+		$iden = $params[0] ?? '';
 
-		if (Session::get("user", "role") == "admin")
+		if (!is_admin())
 		{
-			$bean = R::findOne("seat", "iden = ? AND status = 1", array($params[0]));
+			redirect('/login');
+		}
 
-			if (is_null($bean))
+		$bean = Booking::findByIden($iden);
+		$message = null;
+
+		if ($bean && $_SERVER['REQUEST_METHOD'] === 'POST')
+		{
+			if (Booking::setStatus($bean->id, Booking::CONFIRMED, Booking::USED))
 			{
-				echo '[Некорректный iden]';
-			}
-			else
-			{
-				$bean->status = 2;
-				R::store($bean);
-				header("Location: /cabinet");
+				$message = 'Билет погашен. Можно проходить!';
+				$bean = Booking::findByIden($iden);
 			}
 		}
-		else
-		{
-			header("Location: /ticket" . $params[0]);
-		}
+
+		G::setvar(true, [
+			'menu__active' => 'cabinet',
+			'css' => [
+				'parts/wrapper.css',
+				'parts/nav.css',
+				'cabinet.css'
+			]
+		]);
+
+		G::addvar([
+			'bean'    => $bean,
+			'iden'    => $iden,
+			'message' => $message,
+			'profile' => $bean ? R::findOne('profile', 'login = ?', [$bean->login]) : null
+		]);
+
+		view('ticket-check.php');
 	}
 
 

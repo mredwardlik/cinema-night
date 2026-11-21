@@ -1,6 +1,6 @@
 <?php
 /**
- * 
+ * Sign in / sign up.
  */
 class LoginController
 {
@@ -11,22 +11,18 @@ class LoginController
 
 	public function actionIndex()
 	{
-
-		if (!session_is("user"))
+		if (session_is('user'))
 		{
-			G::setvar(True, [
-				'css' => [
-					'login.css'
-				]
-			]);
-
-			view('login.php');
-		}
-		else
-		{
-			header("Location: /cabinet");
+			redirect('/cabinet');
 		}
 
+		G::setvar(true, [
+			'css' => [
+				'login.css'
+			]
+		]);
+
+		view('login.php');
 	}
 
 
@@ -36,33 +32,32 @@ class LoginController
 
 	public function actionChlogin()
 	{
-
-		Post::catch(function()
+		Post::catch(function ()
 		{
-			Ajax::catch(function()
+			Ajax::catch(function ()
 			{
-				$data = $_POST;
+				$login    = Post::str('login');
+				$password = Post::str('password');
 
-				$user = R::findOne("users", "login = ?", array($data["login"]));
-				$profile = R::findOne("profile", "login = ?", array($data["login"]));
+				if ($login === '' || $password === '')
+				{
+					json_response(['error' => 'Введите логин и пароль']);
+				}
 
-				if ($user)
+				$user = R::findOne('users', 'login = ?', [$login]);
+
+				if (!$user)
 				{
-					if (password_verify($data["password"], $user->password))
-					{
-						$_SESSION["user"] = serialize($user);
-						$_SESSION["profile"] = serialize($profile);
-						echo json_encode(["success" => "Вы авторизованы!"]);
-					}
-					else
-					{
-						echo json_encode(["password" => "Неверно введен пароль!"]);
-					}
+					json_response(['thereis' => 'Пользователя с таким логином не существует']);
 				}
-				else
+
+				if (!password_verify($password, $user->password))
 				{
-					echo json_encode(["thereis" => "Пользователя с таким логином не существует"]);
+					json_response(['password' => 'Неверно введен пароль!']);
 				}
+
+				login_user($user);
+				json_response(['success' => 'Вы авторизованы!', 'redirect' => '/cabinet']);
 			});
 		});
 	}
@@ -74,64 +69,64 @@ class LoginController
 
 	public function actionChreg()
 	{
-		Post::catch(function()
+		Post::catch(function ()
 		{
-			Ajax::catch(function()
+			Ajax::catch(function ()
 			{
-				$data = $_POST;
-				$errors = [];
+				$login     = Post::str('login');
+				$email     = Post::str('email');
+				$password  = $_POST['password'] ?? '';
+				$passwordR = $_POST['password_r'] ?? '';
+				$errors    = [];
 
-				if (trim($data["login"]) == "")
+				if (!preg_match('/^[A-Za-z0-9_.\-]{3,32}$/', $login))
 				{
-					$errors["login"] = "Введите логин";
+					$errors['login'] = 'Логин: 3–32 символа, латинские буквы, цифры, «_», «-» или «.»';
 				}
 
-				if (trim($data["email"]) == "")
+				if (!filter_var($email, FILTER_VALIDATE_EMAIL))
 				{
-					$errors["email"] = "Введите Email";
+					$errors['email'] = 'Введите корректный Email';
 				}
 
-				if ($data["password"] == "")
+				if (!is_string($password) || mb_strlen($password) < 6)
 				{
-					$errors["password"] = "Введите пароль";
+					$errors['password'] = 'Пароль должен быть не короче 6 символов';
 				}
 
-				if ($data["password_r"] != $data["password"])
+				if ($passwordR !== $password)
 				{
-					$errors["password_r"] = "Повторный пароль введен не верно";
+					$errors['password_r'] = 'Повторный пароль введен неверно';
 				}
 
-				if ( R::count("users", "login = ?", array($data["login"])) > 0 )
+				if (!isset($errors['login']) && R::count('users', 'login = ?', [$login]) > 0)
 				{
-					$errors["thereis"] = "Такой пользователь уже сущестует";
+					$errors['thereis'] = 'Такой пользователь уже существует';
 				}
 
-				if (empty($errors))
-
-				{	
-					date_default_timezone_set('Asia/Almaty');
-					$user = R::dispense('users');
-					$user->login    = $data["login"];
-					$user->email    = $data["email"];
-					$user->password = password_hash($data["password"], PASSWORD_DEFAULT);
-					$user->role     = 'user';
-					$user->date     = date("Y-m-d H:i:s");
-					R::store($user);
-
-					$profile = R::dispense('profile');
-					$profile->login      = $data["login"];
-					$profile->name       = "";
-					$profile->surname    = "";
-					$profile->patronymic = "";
-					$profile->phone      = "";
-					R::store($profile);
-
-					echo json_encode(["success" => "Регистрация прошла успешно!"]);
-				}
-				else
+				if ($errors)
 				{
-					echo json_encode($errors);
+					json_response($errors);
 				}
+
+				$user = R::dispense('users');
+				$user->login    = $login;
+				$user->email    = $email;
+				$user->password = password_hash($password, PASSWORD_DEFAULT);
+				$user->role     = 'user';
+				$user->date     = date('Y-m-d H:i:s');
+				R::store($user);
+
+				$profile = R::dispense('profile');
+				$profile->login      = $login;
+				$profile->name       = '';
+				$profile->surname    = '';
+				$profile->patronymic = '';
+				$profile->phone      = '';
+				R::store($profile);
+
+				login_user($user);
+				json_response(['success' => 'Регистрация прошла успешно!', 'redirect' => '/cabinet']);
 			});
 		});
 	}

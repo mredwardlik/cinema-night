@@ -1,3 +1,42 @@
+<?php
+$profile  = G::var('profile');
+$films    = G::var('films') ?: [];
+$price    = (int) G::var('price');
+$bookings = G::var('bookings') ?: [];
+$pending  = G::var('pending') ?: [];
+$tickets  = G::var('tickets') ?: [];
+$used     = G::var('used') ?: [];
+
+$field = function ($name) use ($profile) {
+	return $profile ? e($profile->$name) : '';
+};
+
+$seatList = function ($booking) {
+	$items = [];
+	foreach (Booking::seats($booking) as $seat)
+	{
+		$s = Hall::parse($seat);
+		$items[] = '<span class="seat-chip">Ряд ' . $s['row'] . ' · Место ' . $s['seat'] . '</span>';
+	}
+	return implode('', $items);
+};
+
+$profiles = [];
+$fullName = function ($login) use (&$profiles) {
+	if (!isset($profiles[$login]))
+	{
+		$profiles[$login] = R::findOne('profile', 'login = ?', [$login]);
+	}
+	$p = $profiles[$login];
+	return $p ? trim($p->surname . ' ' . $p->name . ' ' . $p->patronymic) : '';
+};
+$phoneOf = function ($login) use (&$profiles, $fullName) {
+	$fullName($login);
+	return $profiles[$login] ? $profiles[$login]->phone : '';
+};
+
+$profileIncomplete = !$profile || trim($profile->name) === '' || trim($profile->phone) === '';
+?>
 <!DOCTYPE html>
 <html lang="ru">
 
@@ -6,7 +45,7 @@
 <body>
 	<div class="wrapper">
 		<div class="wrapper__navigation" id="wrapper__navigation"></div>
-			
+
 		<?php view('parts/nav.php') ?>
 
 		<header class="header"></header>
@@ -14,55 +53,57 @@
 		<div class="container">
 
 			<div class="box__photo">
-				<img class="user-photo" src="../template/image/logoCN1.png">
+				<img class="user-photo" src="/template/image/logoCN1.png" alt="">
 			</div>
 
 			<section class="box-of-data">
 
+				<p class="greeting">
+					<?php echo is_admin() ? 'Панель оператора' : 'Личный кабинет' ?> ·
+					<b><?php echo e(auth_user('login')) ?></b>
+				</p>
+
+				<?php if (!is_admin() && $profileIncomplete) { ?>
+				<p class="notice"><?php echo icon('phone') ?> Заполните имя и номер телефона: по ним оператор подтвердит бронь.</p>
+				<?php } ?>
+
 				<div class="boxer-wrapper">
-					<form class="boxer" id="profileForm" method="POST" action=" ">
+					<form class="boxer" id="profileForm" novalidate>
 						<div class="p-login">
-							<h2>Логин: </h2><input type="text" name="login" value="<?php echo Session::get('user', 'login') ?>" disabled>
-						</div>
-						<div class="p-login">
-							<h2>Email: </h2><input type="text" name="email" value="<?php echo Session::get('user', 'email') ?>" disabled>
+							<h2>Логин</h2><input type="text" name="login" value="<?php echo e(auth_user('login')) ?>" disabled>
 						</div>
 						<div class="p-login">
-							<h2>Имя: </h2><input type="text" name="name" value="<?php echo Session::get('profile', 'name') ?>" disabled>
+							<h2>Email</h2><input type="email" name="email" value="<?php echo e(auth_user('email')) ?>" disabled>
 						</div>
 						<div class="p-login">
-							<h2>Фамилия: </h2><input type="text" name="surname" value="<?php echo Session::get('profile', 'surname') ?>" disabled>
+							<h2>Имя</h2><input type="text" name="name" value="<?php echo $field('name') ?>" maxlength="50" disabled>
 						</div>
 						<div class="p-login">
-							<h2>Отчество: </h2><input type="text" name="patronymic" value="<?php echo Session::get('profile', 'patronymic') ?>" disabled>
+							<h2>Фамилия</h2><input type="text" name="surname" value="<?php echo $field('surname') ?>" maxlength="50" disabled>
 						</div>
 						<div class="p-login">
-							<h2>Номер телефона: </h2><input type="text" name="phone" value="<?php echo Session::get('profile', 'phone') ?>" disabled>
+							<h2>Отчество</h2><input type="text" name="patronymic" value="<?php echo $field('patronymic') ?>" maxlength="50" disabled>
 						</div>
-						<div class="p-login responce" id="responce">
-							
+						<div class="p-login">
+							<h2>Номер телефона</h2><input type="tel" name="phone" value="<?php echo $field('phone') ?>" placeholder="+7 701 123 45 67" disabled>
 						</div>
+						<div class="p-login responce" id="responce"></div>
 						<div class="p-login butts">
-							<button class="button-save button" id="button-save" name="button-save" style="display: none;">Сохранить</button>
-							<button class="button-change button" id="button-change" name="button-change button" style="display: block;">Изменить</button>
+							<button class="button-save button" id="button-save" type="submit" style="display: none;">Сохранить</button>
+							<button class="button-change button" id="button-change" type="button"><?php echo icon('edit') ?> Изменить</button>
 						</div>
 					</form>
 				</div>
 
 				<div class="logout-box">
-					<form action="/cabinet/logout" method="GET">
+					<form action="/cabinet/logout" method="POST">
+						<?php csrf_field() ?>
 						<input type="hidden" name="redirect" value="/login">
-						<button class="button-logout button" id="button-logout">Выйти</button>
+						<button class="button-logout button" id="button-logout" type="submit"><?php echo icon('logout') ?> Выйти</button>
 					</form>
 				</div>
 
 			</section>
-
-<?php
-$prices = R::findOne("prices", "status = 1");
-$price = $prices->price;
-$films = R::find("films", "status = 1 LIMIT 3");
-?>
 
 			<section class="content">
 				<div class="choose-block">
@@ -71,367 +112,161 @@ $films = R::find("films", "status = 1 LIMIT 3");
 
 				<div class="session-block fixed-film">
 
-					<?php foreach ($films as $film): ?>
-						
+					<?php foreach ($films as $film) { ?>
 					<div class="film-block f_film">
-						<h2><?php echo $film->num ?> фильм</h2>
+						<h2><?php echo e($film->num) ?> фильм</h2>
 						<div class="film-info-block">
 							<table>
 								<tbody>
-									<tr>
-										<td>Название:</td>
-										<td><?php echo $film->name ?></td>
-									</tr>
-									<tr>
-										<td>Жанр:</td>
-										<td><?php echo $film->genre ?></td>
-									</tr>
-									<tr>
-										<td>Режиссер: </td>
-										<td><?php echo $film->producer ?></td>
-									</tr>
-									<tr>
-										<td>Год выпуска: </td>
-										<td><?php echo $film->year ?></td>
-									</tr>
-									<tr>
-										<td >Продолжительность: </td>
-										<td><?php echo $film->time ?></td>
-									</tr>
-									<tr>
-										<td>Язык: </td>
-										<td><?php echo $film->lang ?></td>
-									</tr>
-									<tr>
-										<td >Краткое описание: </td>
-										<td><?php echo $film->about ?></td>
-									</tr>
+									<tr><td>Название:</td><td><?php echo e($film->name) ?></td></tr>
+									<tr><td>Жанр:</td><td><?php echo e($film->genre) ?></td></tr>
+									<tr><td>Режиссер:</td><td><?php echo e($film->producer) ?></td></tr>
+									<tr><td>Год выпуска:</td><td><?php echo e($film->year) ?></td></tr>
+									<tr><td>Продолжительность:</td><td><?php echo e($film->time) ?></td></tr>
+									<tr><td>Язык:</td><td><?php echo e($film->lang) ?></td></tr>
+									<tr><td>Краткое описание:</td><td><?php echo e($film->about) ?></td></tr>
 								</tbody>
 							</table>
 						</div>
 					</div>
+					<?php } ?>
 
-					<?php endforeach ?>
+					<?php if (!$films) { ?>
+					<p class="empty">Программа сеанса пока не опубликована.</p>
+					<?php } ?>
 
 				</div>
 				<div class="price-block">
-						<p class="price-string">Цена сеанса: <?php echo $price; ?><p class="tenge"><i class="fas fa-tenge"></i></p></p>
+					<p class="price-string">Цена сеанса: <?php echo $price ? e(money($price)) : 'уточняется' ?></p>
 				</div>
-
 			</section>
 
-			<?php if (Session::get("user", "role") != "admin") { ?>
+<?php if (!is_admin()) { ?>
 
 			<section class="content">
 				<div class="choose-block">
 					<h2 class="choose-text">Выберите место</h2>
 				</div>
 				<div class="hole-block">
-					<div class="cinema room">
-						
+					<div class="screen">Экран</div>
+					<div class="cinema room" id="room" data-hall="<?php echo e(json_encode(Hall::layout())) ?>" data-price="<?php echo $price ?>"></div>
+					<div class="legend">
+						<span><i class="seat seat--demo"></i> Свободно</span>
+						<span><i class="seat seat--demo bay"></i> Выбрано</span>
+						<span><i class="seat seat--demo bought"></i> Занято</span>
 					</div>
 				</div>
 				<div class="block-take">
-					<div class="responce" id="responce-taken">
-						
-					</div>
-					<button class="button-take button" id="button-take">Забронировать</button>
+					<p class="selection" id="selection">Нажмите на свободные места на схеме</p>
+					<div class="responce" id="responce-taken"></div>
+					<button class="button-take button" id="button-take" type="button" disabled><?php echo icon('ticket') ?> Забронировать</button>
 				</div>
 			</section>
 
-<?php 
-$num = 0;
-$seats = R::find("seat", "login = ? AND status = 1", array(Session::get('user', 'login')));
-?>
-
-<?php if (!empty($seats)) { ?>
-
+			<?php if ($bookings) { ?>
 			<section class="content">
 				<div class="choose-block">
-					<h2 class="choose-text">Забронированные билеты</h2>
+					<h2 class="choose-text">Мои билеты</h2>
 				</div>
 
 				<div class="tickets-block">
+					<?php $num = 0; foreach ($bookings as $seat) { $num++; $status = (int) $seat->status; ?>
+					<div class="ticket ticket--<?php echo $status ?>">
+						<h2 class="num-box"><?php echo $num ?></h2>
+						<span class="status status--<?php echo $status ?>"><?php echo e(Booking::$statusNames[$status]) ?></span>
 
-
-	<?php 
-	foreach ($seats as $seat) 
-	{ 
-		$num++;
-	?>
-
-					<div class="ticket">
-						<h2 class="num-box"><?php echo $num; ?>.</h2>
-						<a href="/ticket<?php echo $seat->iden; ?>" target="_blank" class="barcode">
-							<i class="fas fa-qrcode"></i>
-						</a>
-
+						<?php if ($status === Booking::PENDING) { ?>
+						<div class="barcode barcode--wait"><?php echo icon('clock') ?></div>
+						<p class="ticket-note">Оператор позвонит вам, чтобы подтвердить бронь</p>
+						<?php } else { ?>
+						<a href="/ticket<?php echo e($seat->iden) ?>" target="_blank" class="barcode" title="Открыть билет"><?php echo icon('qrcode') ?></a>
 						<div class="ticket-card">
-							<a href="/ticket<?php echo $seat->iden; ?>">/<?php echo $seat->iden; ?></a>
+							<a href="/ticket<?php echo e($seat->iden) ?>" target="_blank">Билет № <?php echo e($seat->iden) ?></a>
 						</div>
-
-						<div class="places">
-
-						<?php
-
-						foreach (json_decode($seat->seat) as $value) {
-							$row = explode(",", $value)[0];
-							$column = explode(",", $value)[1];
-
-						?>	
-							<p>Ряд: <?php echo $row; ?></p>
-							<p class="box-place">Место: <?php echo $column; ?></p>
 						<?php } ?>
 
-						</div>
+						<div class="places"><?php echo $seatList($seat) ?></div>
 
 						<div class="ticket-price-block">
-							<p class="price-string-for-ticket"><?php echo $seat->price; ?>
-								<p class="tenge">
-									<i class="fas fa-tenge"></i>
-								</p>
-							</p>
+							<p class="price-string-for-ticket"><?php echo e(money($seat->price)) ?></p>
 						</div>
 					</div>
+					<?php } ?>
+				</div>
+			</section>
+			<?php } ?>
 
-	<?php 
-	} 
-	?>
+<?php } else { ?>
 
+			<section class="content">
+				<div class="choose-block">
+					<h2 class="choose-text">Заявки на бронь <span class="counter"><?php echo count($pending) ?></span></h2>
+				</div>
+
+				<div class="admin-block">
+					<?php if (!$pending) { ?>
+					<p class="empty">Новых заявок нет.</p>
+					<?php } ?>
+
+					<?php foreach ($pending as $seat) { $phone = $phoneOf($seat->login); ?>
+					<div class="request" id="request-<?php echo (int) $seat->id ?>">
+						<div class="request__who">
+							<b><?php echo e($fullName($seat->login) ?: $seat->login) ?></b>
+							<span>@<?php echo e($seat->login) ?> · <?php echo e(date('d.m.Y H:i', strtotime($seat->date))) ?></span>
+							<?php if ($phone) { ?>
+							<a class="request__phone" href="tel:<?php echo e(preg_replace('/[^0-9+]/', '', $phone)) ?>"><?php echo icon('phone') ?> <?php echo e($phone) ?></a>
+							<?php } ?>
+						</div>
+						<div class="places"><?php echo $seatList($seat) ?></div>
+						<div class="request__sum"><?php echo e(money($seat->price)) ?></div>
+						<div class="request__actions">
+							<button class="btn btn--green btn--small js-approve" data-id="<?php echo (int) $seat->id ?>" type="button"><?php echo icon('check') ?> Подтвердить</button>
+							<button class="btn btn--red btn--small js-reject" data-id="<?php echo (int) $seat->id ?>" type="button"><?php echo icon('x') ?> Отклонить</button>
+						</div>
+					</div>
+					<?php } ?>
+					<div class="responce" id="responce-admin"></div>
 				</div>
 			</section>
 
-<?php 
-} 
-?>
-			<?php 
-			} 
-			?>
+			<section class="content">
+				<div class="choose-block">
+					<h2 class="choose-text">Выданные билеты <span class="counter"><?php echo count($tickets) ?></span></h2>
+				</div>
+
+				<div class="admin-block">
+					<?php if (!$tickets) { ?>
+					<p class="empty">Подтверждённых билетов пока нет.</p>
+					<?php } ?>
+
+					<?php foreach ($tickets as $seat) { ?>
+					<div class="request">
+						<div class="request__who">
+							<b><?php echo e($fullName($seat->login) ?: $seat->login) ?></b>
+							<span>Билет № <?php echo e($seat->iden) ?> · код <?php echo e($seat->code) ?></span>
+						</div>
+						<div class="places"><?php echo $seatList($seat) ?></div>
+						<div class="request__sum"><?php echo e(money($seat->price)) ?></div>
+						<div class="request__actions">
+							<a class="btn btn--amber btn--small" href="/ticket<?php echo e($seat->iden) ?>" target="_blank"><?php echo icon('ticket') ?> PDF</a>
+							<a class="btn btn--small btn--dark" href="/wipe<?php echo e($seat->iden) ?>"><?php echo icon('qrcode') ?> Проверка</a>
+						</div>
+					</div>
+					<?php } ?>
+
+					<?php if ($used) { ?>
+					<p class="empty">Погашено на входе: <?php echo count($used) ?></p>
+					<?php } ?>
+				</div>
+			</section>
+
+<?php } ?>
 
 		</div>
 	</div>
 
 	<?php view('parts/scripts.php') ?>
-	
+	<script src="/template/js/cabinet.js"></script>
+
 </body>
-
-
-<script type="text/javascript">
-$(document).ready(function()
-{	
-
-//-------------------------------------------------//
-
-	var CinemaStruct = {
-		'1' : [16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
-	}
-
-	var Taken = [];
-		Cinema1 = '';
-
-
-	$.each(CinemaStruct["1"], function(row, numberOfSeats) {
-
-		if ((row+1)<10)
-		{
-			cinemaHallRow =  '<span class="num-column">Ряд№:' + (row+1) + '</span>&nbsp;&nbsp;&nbsp;';
-		}
-		else
-		{
-			cinemaHallRow =  '<span class="num-column">Ряд№:' + (row+1) + '</span>&nbsp;';
-		}
-
-		for (i = 1; i <= numberOfSeats; i++) {
-			cinemaHallRow += 
-			'<div class="seat" data-row="' +
-			(row+1) + '" data-seat="' +
-			i + '">' + i + '</div>';
-		}
-
-		Cinema1 += cinemaHallRow + '<div class="passageBetween">&nbsp;</div>';
-	});
-
-
-$('.room').html(Cinema1);
-
-$('.seat').on('click', function(e) {
-	if (!$(this).hasClass('bought'))
-	{
-		$(e.currentTarget).toggleClass('bay');
-		showBaySeat();
-	}
-		
-});
-
-function showBaySeat() {
-  result = '';
-  $.each( $('.seat.bay'), function(key, item) {
-    result += '<div class="ticket">Ряд: ' +
-      $(item).data().row + ' Место:' +
-      $(item).data().seat + '</div>';
-  });
-
-  $('.result').html(result);
-}
-
-//-------------------------------------------------//
-
-	$.ajax({
-			type: "POST",
-			url: "/cabinet/seats",
-			cache: false,
-
-			success: function(response) {
-				var arr = [];
-
-				$.each(JSON.parse(response), function(key, item) {
-					arr.push(JSON.parse(item["seat"]));
-				});
-
-				$('.seat').each(function(index1,elem1) {
-
-					$.each(arr, function(index2, elem2) {
-
-						$.each(elem2, function(index3, elem3) {
-
-							if ((elem1.getAttribute("data-row") == elem3.split(",")[0]) && (elem1.getAttribute("data-seat") == elem3.split(",")[1]))
-							{
-								$(elem1).addClass('bought');
-								$(elem1).html("X");
-							}
-						});
-
-					});
-
-				});
-			}
-		});
-
-//-------------------------------------------------//
-
-	$("#button-take").click(function(event)
-	{
-
-		event.preventDefault();
-
-		var answ = "";
-		var arr = [];
-
-		$('.bay').each(function(i,elem) {
-			answ += elem.getAttribute("data-row") + ',' + elem.getAttribute("data-seat");
-			arr.push(answ);
-			answ = "";
-		});
-
-		console.log(arr);
-
-		$.ajax({
-			type: "POST",
-			url: "/cabinet/taken",
-			data:{data: arr},
-			cache: false,
-
-			success: function(responce) {
-				result = JSON.parse(responce);
-
-				$.each(result, function(key, item) {
-
-					if (key == "error")
-					{
-						$('#responce-taken').css("color", "red");
-						$('#responce-taken').html(item);
-					}
-					else
-					{
-						$('#responce-taken').css("color", "green");
-						$('#responce-taken').html(item);
-					}
-
-					setTimeout(function () 
-                    {
-                    	$('.bay').removeClass('bay');
-                    	$('#responce-taken').html("");
-                    }, 1800);
-
-				});
-
-			}
-
-		});
-
-	});
-
-//-------------------------------------------------//
-
-	$("#button-change").click(function(event)
-	{
-
-		event.preventDefault();
-		$(".p-login input").attr("disabled", false);
-		$(".p-login input").css("background-color", "#D7F5DC");
-
-		$(".p-login input[name=login]").attr("disabled", true);
-		$(".p-login input[name=login]").css("background-color", "#FFFFFF");
-
-		$("#button-change").hide();
-		$("#button-save").show();
-
-	});
-
-//-------------------------------------------------//
-
-	 $("#profileForm").submit(function()
-    {
-        $.ajax(
-        {
-            url: "/cabinet/ch",
-            type: "POST",
-            data: $(this).serialize(),
-            success: function(response) 
-            {
-                $('#responce').html("");
-                result = $.parseJSON(response);
-
-                $.each(result, function(keyError, value)
-                {
-                	if (keyError == 'success')
-                    {
-                        $('#responce').css("color", "green");
-                        $('#responce').html(value);
-   
-                        setTimeout(function () 
-                        {
-                        	$('#responce').html("");
-                        	$(".p-login input").attr("disabled", true);
-                        	$(".p-login input").css("background-color", "#FFFFFF");
-
-                        	$("#button-save").hide();
-                        	$("#button-change").show();
-                        	
-
-                        }, 1000);
-                    }
-                    else
-                    {
-                        $('#responce').css("color", "red");
-                        $('#responce').html(value);
-
-                        setTimeout(function(){
-                        	$('#responce').html("");
-                        }, 1000);
-                    }
-                });
-
-            },
-            error: function(response)
-            {
-                $('#responce').html('Ошибка. Данные не отправлены.');
-            }
-        });
-        return false;
-    });
-
-});
-</script>
-
 </html>
