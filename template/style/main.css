@@ -46,9 +46,22 @@
 }
 
 .header__text__p2 {
+	margin-top: 10px;
 	color: #FFFFFF;
 	font-family: 'Amatic SC';
-	font-size: 24px;
+	font-size: 26px;
+}
+
+.header__actions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 14px;
+	margin-top: 28px;
+}
+
+.header__actions .btn {
+	font-size: 18px;
 }
 
 /*-----------------*/
@@ -61,50 +74,116 @@
 
 .form {
 	position: relative;
-	display: block;
-	height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 100vh;
 	width: 100%;
-	z-index: -1;
+	padding: 80px 20px;
+	isolation: isolate;
 }
 
 .form::after {
 	content: "";
 	position: absolute;
 	background-image: url(../image/form1.jpg);
-    background-size: cover;
-    background-position: center;
-    opacity: 0.4;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    z-index: -2 !important;
+	background-size: cover;
+	background-position: center;
+	opacity: 0.4;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
+	z-index: -1;
 }
 
-.form__block {
-	position: absolute;
-	display: block;
-	left: 50%;
-	top: 50%;
-	height: 600px;
-	width: 400px;
-	transform: translate(-50%, -50%);
-	border-radius: 16px;
+.program {
+	width: 100%;
+	max-width: 1100px;
+	padding: 40px;
+	border-radius: 24px;
 	background-color: #FFFFFF;
+	box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.35);
+	text-align: center;
 }
 
-.form__block::after {
-	content: "";
+.program__head h2 {
+	font-family: 'Amatic SC';
+	font-size: 50px;
+	color: #5A5A5A;
+}
+
+.program__price {
+	display: inline-block;
+	margin-top: 6px;
+	padding: 8px 18px;
+	border-radius: 20px;
+	background-color: #FFC342;
+	font-family: 'PF BeauSans Pro Light';
+	font-size: 18px;
+	color: #2C2C2C;
+}
+
+.program__films {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 24px;
+	margin: 36px 0;
+	text-align: left;
+}
+
+.program__film {
+	position: relative;
+	padding: 28px 24px 24px;
+	border-radius: 20px;
+	background-color: #F6F6F6;
+	font-family: 'PF BeauSans Pro Light';
+	color: #4A4A4A;
+}
+
+.program__index {
 	position: absolute;
-	background-color: white;
-	opacity: 1;
-    top: 3%;
-    left: 5%;
-    bottom: 3%;
-    right: 5%;
-    border-radius: 16px;
-    box-shadow: inset 0px 0px 12px 1px rgba(0,0,0,0.38);
-    z-index: -2 !important;
+	top: -16px;
+	left: 24px;
+	display: grid;
+	place-items: center;
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	background-color: #2C2C2C;
+	color: #F3BC46;
+	font-family: 'Amatic SC';
+	font-size: 26px;
+	font-weight: bold;
+}
+
+.program__film h3 {
+	font-family: 'Amatic SC';
+	font-size: 38px;
+	color: #2C2C2C;
+}
+
+.program__meta {
+	margin: 4px 0 12px;
+	font-size: 15px;
+	color: #DFA322;
+}
+
+.program__about {
+	font-size: 15px;
+	line-height: 1.5;
+}
+
+.program__producer {
+	margin-top: 12px;
+	font-size: 14px;
+	color: #8A8A8A;
+}
+
+.program__empty {
+	margin: 30px 0;
+	font-family: 'PF BeauSans Pro Light';
+	color: #8A8A8A;
 }
 
 /*-----------------*/
@@ -153,7 +232,12 @@
 }
 
 .info__card {
-	display: block;
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 14px;
 
 	min-height: 350px;
 	max-height: 350px;
@@ -161,9 +245,44 @@
 	max-width: 215px;
 
 	margin: 0 auto;
+	padding: 24px 18px;
 	border-radius: 20px;
 	text-align: center;
+	color: #FFFFFF;
 	background-color: #F3F3F3;
+	box-shadow: 0 14px 30px -14px rgba(0, 0, 0, 0.45);
+	transition: transform 0.25s;
+}
+
+.info__card:hover {
+	transform: translateY(-6px);
+}
+
+.info__num {
+	position: absolute;
+	top: 14px;
+	left: 18px;
+	font-family: 'Amatic SC';
+	font-size: 34px;
+	font-weight: bold;
+	opacity: 0.55;
+}
+
+.info__icon {
+	width: 64px;
+	height: 64px;
+	stroke-width: 1.6;
+}
+
+.info__card h3 {
+	font-family: 'Amatic SC';
+	font-size: 40px;
+}
+
+.info__card p {
+	font-family: 'PF BeauSans Pro Light';
+	font-size: 16px;
+	line-height: 1.4;
 }
 
 .info__one {
@@ -207,12 +326,22 @@
 	.info__block {
 		width: 100%;
 	}
+
+	.program {
+		padding: 28px 18px;
+	}
+
+	.program__films {
+		grid-template-columns: 1fr;
+		gap: 32px;
+	}
 }
 
 @media (max-width: 500px) {
 
 	.header__text {
-		width: 200px;
+		width: 100%;
+		padding: 0 20px;
 	}
 
 }

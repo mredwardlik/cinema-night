@@ -77,3 +77,50 @@ button:active {
 button:focus {
 	outline: 0;
 }
+
+/*----------------- shared UI -----------------*/
+
+.icon {
+	display: inline-block;
+	width: 1em;
+	height: 1em;
+	vertical-align: -0.125em;
+	flex-shrink: 0;
+}
+
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	padding: 14px 28px;
+	border-radius: 30px;
+	font-family: 'PF BeauSans Pro Light';
+	font-size: 20px;
+	line-height: 1;
+	color: #FFFFFF;
+	transition: transform 0.15s, background-color 0.2s, box-shadow 0.2s;
+}
+
+.btn:hover {
+	transform: translateY(-2px);
+}
+
+.btn:disabled {
+	opacity: 0.6;
+	cursor: default;
+	transform: none;
+}
+
+.btn--amber   { background-color: #DFA322; box-shadow: 0 8px 20px -8px rgba(223, 163, 34, 0.8); }
+.btn--amber:hover { background-color: #F3BC46; }
+.btn--ghost   { border: 2px solid rgba(255,255,255,0.7); }
+.btn--ghost:hover { border-color: #F3BC46; color: #F3BC46; }
+.btn--green   { background-color: #75c181; }
+.btn--green:hover { background-color: #86cf91; }
+.btn--red     { background-color: #FF5733; }
+.btn--red:hover { background-color: #FF6B4B; }
+.btn--small   { padding: 8px 16px; font-size: 16px; }
+
+.is-success { color: #2E9E44 !important; }
+.is-error   { color: #E62F2F !important; }

@@ -253,3 +253,29 @@
 	}
 	
 }
+
+/*----------------- tweaks -----------------*/
+
+.pop {
+	font-family: 'PF BeauSans Pro Light';
+}
+
+.clip-sign-up,
+.clip-sign-in {
+	cursor: pointer;
+}
+
+.arrow-back {
+	font-size: 28px;
+	line-height: 1;
+}
+
+.eye {
+	font-size: 18px;
+	line-height: 1;
+}
+
+.button:disabled {
+	opacity: 0.6;
+	cursor: default;
+}

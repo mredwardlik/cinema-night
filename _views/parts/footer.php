@@ -1,16 +1,10 @@
 <footer class="footer">
-	<div class="footer__social">
-		<a class="social__a" href="#">
-			<i class="fab fa-vk"></i>
-		</a>
-		<a class="social__a" href="#">
-			<i class="fa fa-telegram" aria-hidden="true"></i>
-		</a>
-		<a class="social__a" href="#">
-			<i class="fab fa-facebook-f"></i>
-		</a>
-		<a class="social__a" href="#">
-			<i class="fab fa-instagram"></i>
-		</a>
+	<div class="footer__inner">
+		<span class="footer__brand">Cinema Night · Алматы</span>
+		<nav class="footer__links">
+			<a href="/">Главная</a>
+			<a href="/doc">Инструкция</a>
+			<a href="/cabinet">Кабинет</a>
+		</nav>
 	</div>
 </footer>

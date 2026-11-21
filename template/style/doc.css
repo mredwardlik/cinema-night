@@ -32,3 +32,103 @@ p {
 	}
 
 }
+
+/*----------------- instruction -----------------*/
+
+.doc-block-wrapper {
+	font-family: 'PF BeauSans Pro Light';
+	color: #2C2C2C;
+	line-height: 1.6;
+}
+
+.doc-block h1 {
+	font-family: 'Amatic SC';
+	font-size: 56px;
+	color: #2C2C2C;
+	text-align: center;
+}
+
+.doc-lead {
+	margin: 6px auto 30px;
+	max-width: 680px;
+	text-align: center;
+	color: #7A7A7A !important;
+	font-size: 18px;
+}
+
+.doc-step {
+	display: grid;
+	grid-template-columns: 56px 1fr;
+	gap: 18px;
+	padding: 22px 0;
+	border-top: 1px solid #ECECEC;
+}
+
+.doc-step__num {
+	display: grid;
+	place-items: center;
+	width: 56px;
+	height: 56px;
+	border-radius: 50%;
+	background-color: #2C2C2C;
+	color: #F3BC46;
+	font-size: 26px;
+}
+
+.doc-step h2 {
+	font-family: 'Amatic SC';
+	font-size: 34px;
+	color: #2C2C2C;
+}
+
+.doc-step p {
+	margin-top: 6px;
+	font-size: 17px;
+}
+
+.doc-step a {
+	font-size: inherit;
+	color: #DFA322;
+}
+
+.doc-legend {
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	margin: 0 4px 0 8px;
+	border-radius: 4px;
+	vertical-align: -2px;
+}
+
+.doc-operator {
+	margin-top: 26px;
+	padding: 24px 28px;
+	border-radius: 24px;
+	background-color: #F6F6F6;
+}
+
+.doc-operator h2 {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-family: 'Amatic SC';
+	font-size: 34px;
+}
+
+.doc-operator li {
+	list-style: disc;
+	margin-left: 22px;
+	font-size: 17px;
+}
+
+@media (max-width: 650px) {
+
+	.doc-block-wrapper {
+		text-align: left;
+	}
+
+	.doc-step {
+		grid-template-columns: 1fr;
+	}
+
+}
